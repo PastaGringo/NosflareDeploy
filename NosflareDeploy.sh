@@ -92,10 +92,15 @@ for app in ${apps_to_check[@]}; do
 done
 echo
 echolor "Checking if variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ..."
+if test -f "prod_vars"; then
+    echo "### Loading Production variables ###"
+    . prod_vars
+fi
 var_missing=0
 for var in "${vars_to_check[@]}"; do
     if [[ -z "${!var}" ]]; then
-        echo ">>> $var ❌ = \"${!var}\""
+        #echo ">>> $var  = \"${!var}\""
+        printf '❌ %-25s: %s\n' "$var " "${!var}"
         var_missing=1
         #exit 1
     else
