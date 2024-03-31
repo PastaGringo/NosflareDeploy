@@ -17,8 +17,8 @@ relayInfo_contact="" #example: relayInfo_contact="pastagringo@fractalized.net"
 #
 # OPTIONAL BEGIN ##########################################################################################
 relayIcon_URL=""
-blockedPubkeys="" # Add comma separated kinds Ex: "c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18"
-blockedEventKinds="" # Add comma separated kinds Ex: 1064, 4, 22242 ; Enable 1064 to avoid to reach the Cloudflare free tier limit!
+blockedPubkeys="" # With comma at begin/end. Ex: ""c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18""
+blockedEventKinds="" # With comma at begin/end. Ex: "1064, 4, 22242"
 # OPTIONAL END ##########################################################################################
 #
 # CUSTOM BEGIN ##########################################################################################
