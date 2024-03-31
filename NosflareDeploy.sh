@@ -1,24 +1,37 @@
 #!/bin/bash
+#
+# # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
-# ##################################################################################################
+#  
 # You can create your API token from your Cloudflare account here: https://dash.cloudflare.com/profile/api-tokens
 # Use template "Edit Cloudflare Workers" or create a custom one for workers
 CLOUDFLARE_API_TOKEN=""
-relayInfo_name=""
+relayInfo_name="" # example: relayInfo_name="My Beautiful domain!"
 # Full domain of the relay. Ex: relay.domain.tld. You need to have the domain.tld zone available in your Cloudflare domain list.
-relayURL=""
-relayInfo_description=""
+relayURL="" # example: relayURL="relay.nostr.com"
+relayInfo_description="" #example: I love french fries!
 #pubkey hex format, you can use damus convertor to convert your npub to hex : https://damus.io/key/
-relayInfo_pubkey=""
-relayInfo_contact=""
+relayInfo_pubkey="" #example: relayInfo_pubkey="b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79"
+relayInfo_contact="" #example: relayInfo_contact="pastagringo@fractalized.net"
+# MANDATORY END ###########################################################################################
+#
+# OPTIONAL BEGIN ##########################################################################################
 relayIcon_URL=""
+blockedPubkeys="" # Add comma separated kinds Ex: "c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18"
+blockedEventKinds="" # Add comma separated kinds Ex: 1064, 4, 22242 ; Enable 1064 to avoid to reach the Cloudflare free tier limit!
+# OPTIONAL END ##########################################################################################
+#
+# CUSTOM BEGIN ##########################################################################################
 # Set to 1 if you need to hide your info during the wrangler whoami & CF API KEY display (maybe you want to record your session script?)
 hide_whoami_infos=1
 debug=0
+# CUSTOM BEGIN ##########################################################################################
+#
 # ##################################################################################################
 # Script variables, please do not modify if you don't know what you are doing
 apps_to_check=(npm git jq)
-vars_to_check=(CLOUDFLARE_API_TOKEN relayURL relayInfo_name relayInfo_description relayInfo_pubkey relayInfo_contact relayIcon_URL)
+vars_to_check_mandatory=(today worker_date CLOUDFLARE_API_TOKEN relayURL relayDOMAIN relayInfo_name relayInfo_description relayInfo_pubkey relayInfo_contact)
+vars_to_check_optional=(relayIcon_URL blockedPubkeys blockedEventKinds )
 pwd=$(pwd)
 path_nosflare="$pwd/nosflare"
 path_node_modules_bin="$path_nosflare/node_modules/.bin"
@@ -59,6 +72,7 @@ EOF
 ##################################################################################################
 clear
 today=$(date +%Y-%m-%d)
+worker_date=$(date --date="$today -1 day" +%Y-%m-%d) # CF bug when deploying outside US time
 echo 
 echo "-------------------------- NosflareDeploy v1.0 ---------------------------"
 echo "    _   __           ______                ____             __           ";
@@ -91,13 +105,13 @@ for app in ${apps_to_check[@]}; do
     fi
 done
 echo
-echolor "Checking if variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ..."
+echolor "Checking if MANDATORY variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ..."
 if test -f "prod_vars"; then
     echo "### Loading Production variables ###"
     . prod_vars
 fi
 var_missing=0
-for var in "${vars_to_check[@]}"; do
+for var in "${vars_to_check_mandatory[@]}"; do
     if [[ -z "${!var}" ]]; then
         #echo ">>> $var  = \"${!var}\""
         printf '❌ %-25s: %s\n' "$var " "${!var}"
@@ -114,6 +128,15 @@ if [ $var_missing -eq 1 ];then
     echo
     exit
 fi
+echo
+echolor "Checking if OPTIONNAL variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ..."
+for var in "${vars_to_check_optional[@]}"; do
+    if [[ -z "${!var}" ]]; then
+        printf '⚠️  %-25s: %s\n' "$var " "${!var}"
+    else
+        printf '✅ %-25s: %s\n' "$var " "${!var}"
+    fi
+done
 echo
 echolor "Checking if Nosflare has already been built here ..."
 if test -d $path_nosflare; then
@@ -155,7 +178,7 @@ if test -d $path_nosflare; then
         echo "Done ✅"
     fi
 else
-    echo ">>> $path_nosflare not found ⚠️ (first time install?)"
+    echo "⚠️   $path_nosflare not found. First time install?"
     echo
     echolor "Would you like to clone nosflare from $nosflare_remote_gh_repo to $path_nosflare ?"
     echo
@@ -194,6 +217,27 @@ sed -i 's/description: "A serverless Nostr relay through Cloudflare Worker and K
 sed -i 's/pubkey: "d49a9023a21dba1b3c8306ca369bf3243d8b44b8f0b6d1196607f7b0990fa8df"/pubkey: "'"$relayInfo_pubkey"'"/g' $path_worker_js
 sed -i 's/contact: "lucas@censorship.rip"/contact: "'"$relayInfo_contact"'"/g' $path_worker_js
 sed -i 's#const relayIcon = "https://workers.cloudflare.com/resources/logo/logo.svg"#const relayIcon = "'"$relayIcon_URL"'"#g' $path_worker_js
+sed -i 's/\[1064\]/\["'"$blockedEventKinds"'"\]/g' $path_worker_js
+sed -i '/blockedEventKinds/s/"//g' $path_worker_js
+sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
+blockedEventKinds_raw=$(sed 's/"//g' <<< "$blockedEventKinds")
+sed -i 's/  1064/  "'"$blockedEventKinds_raw"'"/g' $path_worker_js
+sed -i '/  "'"$blockedEventKinds_raw"'"/s/"//g' $path_worker_js
+sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
+blockedPubkeys_count=$(grep -o ',' <<< "$blockedPubkeys" | wc -l)
+blockedPubkeys_count=$((blockedPubkeys_count + 1))
+i=1
+for blockedPubkey in ${blockedPubkeys[@]}; do
+    pubkey0=$(echo ${blockedPubkey:0:-1})
+    pubkey='"'"$pubkey0"'"' 
+    pubkey2=$(echo $pubkey | sed 's/$/,/')
+    if [ "$i" -eq 1 ]; then
+      sed -i '/const blockedPubkeys/a '"$pubkey"'' $path_worker_js
+    else
+      sed -i '/const blockedPubkeys/a '"$pubkey2"'' $path_worker_js
+    fi 
+    ((i++))
+done
 echo "✅ updated succeed"
 echo
 export CLOUDFLARE_API_TOKEN
@@ -207,9 +251,9 @@ fi
 echo
 echolor "Verify if wrangler.toml ($path_wrangler_toml) exists ..."
 if test -f "$path_wrangler_toml"; then
-    echo ">>> $path_wrangler_toml exists ✅"
+    echo "✅ wrangler.toml exists "
 else
-    echo ">>> $path_wrangler_toml doesn't exists !"
+    echo "⚠️   wrangler.toml doesn't exists! (normal, first install)"
     echolor "Dowloading it ($url_file_wrangler_toml)..."
     wget -q "$url_file_wrangler_toml" -O $path_wrangler_toml
     if test -f "$path_wrangler_toml"; then
@@ -226,9 +270,9 @@ kvs_json=$($path_wrangler kv:namespace list)
 kvs_count=$(echo $kvs_json | jq length)
 if [[ $kvs_count -gt 0 ]]
     then
-        echo ">>> Found $kvs_count KV(s)"
+        echo "✅ Found $kvs_count KV(s)"
     else
-        echo ">>> Found $kvs_count KV(s)"
+        echo "⚠️   Found $kvs_count KV(s)"
         echo
         echolor "Creating Nosflare KV ... "
         echo
@@ -253,7 +297,7 @@ if [ -z "${nosflare_cf_kv_id}" ]; then
     echo
     exit 1
 else
-    echo ">>> ✅ Nosflare KVdb id : $nosflare_cf_kv_id"
+    echo "✅ Nosflare KVdb id : $nosflare_cf_kv_id"
 fi
 #exit
 echo
@@ -261,14 +305,24 @@ echolor "Updating wrangler.toml file with given ENV variables... "
 sed -i 's/"KV_ID"/"'"$nosflare_cf_kv_id"'"/g' $path_wrangler_toml
 sed -i 's/"FULL_DOMAIN"/"'"$relayURL"'"/g' $path_wrangler_toml
 sed -i 's/"DOMAIN"/"'"$relayDOMAIN"'"/g' $path_wrangler_toml
-sed -i 's/"DATE"/"'"$today"'"/g' $path_wrangler_toml
-echo ">>> Done ✅"
+sed -i 's/"DATE"/"'"$worker_date"'"/g' $path_wrangler_toml
+echo "✅ Done"
 echo
 echolor "Deploying your Nosflare Nostr relay to Cloudflare ..."
 echo
-$path_wrangler deploy $path_worker_js
-echo
-echo ">>> Done ✅"
+if $path_wrangler deploy $path_worker_js
+then
+    echo
+    echo "✅✅✅ Nosflare deployment succeed! 💥"
+else
+    echo
+    echo "⛔ Nosflare deployment failed!"
+    echo "Removing wrangler.toml file to not break NosflareDeploy"
+    rm -rf $path_wrangler_toml
+    echo "Something is wrong. Please open a github issue: https://github.com/PastaGringo/NosflareDeploy/issues/new/choose"
+    echo
+    exit
+fi
 echo
 echolor "##################################### NOSFLARE DEPLOYMENT COMPLETE #####################################"
 echo
@@ -301,12 +355,12 @@ read
 echolor "Deleting the Cloudflare KV namespace ..."
 echo
 $path_wrangler kv:namespace delete --namespace-id $nosflare_cf_kv_id
-echo ">>> Done ✅"
+echo "✅ Done "
 echo
 echolor "Deleting the Cloudflare Worker ..."
 echo
 $path_wrangler delete --config $path_wrangler_toml --force
-echo ">>> Done ✅"
+echo "✅ Done "
 echo
 echolor "Checking if $path_nosflare still exists ..."
 if test -d $path_nosflare; then
