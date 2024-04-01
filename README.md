@@ -13,7 +13,7 @@ Will be useful to test the upgrade for the next Nosflare release.
 ### Download and make the script executable
 ```
 wget https://raw.githubusercontent.com/PastaGringo/NosflareDeploy/main/NosflareDeploy.sh
-chmod +x ./DeployNosflare.sh
+chmod +x ./NosflareDeploy.sh
 ```
 
 ### Run the script
