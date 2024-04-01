@@ -42,18 +42,82 @@ path_worker_js="$path_nosflare/worker.js"
 path_dist_worker_js="$path_nosflare/dist/worker.js"
 nosflare_remote_gh_repo="https://github.com/spl0itable/nosflare"
 url_file_wrangler_toml="https://raw.githubusercontent.com/PastaGringo/nosflare/main/wrangler.toml"
+url_file_worker_js="https://raw.githubusercontent.com/Spl0itable/nosflare/main/worker.js"
 nosflare_gh_repo_owner=$(echo $nosflare_remote_gh_repo | cut -d"/" -f 4)
 nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="worker-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
+version_check="1.8.6"
 ##################################################################################################
-function echolor()
+function CheckVersion()
 {
+    echo
+    nosflare_latest_version=$(curl -s "https://raw.githubusercontent.com/$nosflare_gh_repo_owner/nosflare/main/worker.js" | grep version | cut -d '"' -f 2)
+    echo "Latest Nosflare ($nosflare_remote_gh_repo) version available: $nosflare_latest_version"
+    if [ "$nosflare_latest_version" != "$version_check" ]; then
+        echo
+        echo "NosflareDeploy is not yet compatible with version $nosflare_latest_version (currently: $version_check)"
+        echo "Please open an Github issue to ask an update: https://github.com/PastaGringo/NosflareDeploy/issues/new"
+        echo
+        exit
+    else
+        echo "Version $nosflare_latest_version is compatible with NosflareDeploy ✅"
+    fi
+}
+function InstallNPMDependencies()
+{
+    echolor "Installing @noble/curves ..."
+    npm install --silent --prefix $path_nosflare @noble/curves
+    echo "@noble/curves installed ✅"
+    echo
+    echolor "Installing wrangler ..."
+    npm install --silent --prefix $path_nosflare wrangler
+    echo "wrangler installed ✅"
+}
+function DownloadWorkerJS()
+{
+    if test -f "$path_worker_js"; then
+        echo "✅ worker.js exists"
+        echolor "Removing it..."
+        rm -rf $path_worker_js
+        echo "Removed ✅"
+    #else
+    #    echo "⚠️   worker.js doesn't exists!"
+    fi
+    echolor "Downloading worker.js ..."
+    wget -q  --directory-prefix=$path_nosflare "$url_file_worker_js"
+    if test -f "$path_worker_js"; then
+        echo "worker.js downloaded ✅"
+    else
+        echo ">>> Error during worker.js download"
+        echo
+        exit 1
+    fi
+}
+function echolor() {
     YELLOW="\e[33m"
     ENDCOLOR="\e[0m"
-    string=$(echo $1)
-    echo -e "${YELLOW}${string}${ENDCOLOR}"
+    
+    # Check if the first argument is "-nnl"
+    if [[ $1 == "-nnl" ]]; then
+        # Use -n option for echo
+        echo_option="-n"
+        # Remove the "-nnl" argument from the list of arguments
+        shift
+    else
+        echo_option=""
+    fi
+    
+    string=$(echo "$@")
+    echo -e ${echo_option} "${YELLOW}${string}${ENDCOLOR} "
 }
+#function echolor()
+#{
+#    YELLOW="\e[33m"
+#    ENDCOLOR="\e[0m"
+#    string=$(echo $1)
+#    echo -e "${YELLOW}${string}${ENDCOLOR}"
+#}
 function HideWhoamiInfos
 {
 cat << EOF
@@ -83,23 +147,27 @@ echo "/_/ |_/\____/____/_/ /_/\__,_/_/   \___/_____/\___/ .___/_/\____/\__, /  "
 echo "                                                 /_/            /____/.sh";
 echo "-------------------------- NosflareDeploy v1.0 ---------------------------"
 echo "                                                                $today    "
+CheckVersion
 echo
-echo "Current working dir   : $pwd"
+echo "Working dir   : $pwd"
 if [[ $hide_whoami_infos -eq 1 ]]; then
-    echo "Hide my infos         : enabled"
+    echo "Hide my infos : enabled"
 else
-    echo "Hide my infos         : disabled"
+    echo "Hide my infos : disabled"
 fi
 echo
 echolor "Checking if basic depedencies are available ..."
 echo
 for app in ${apps_to_check[@]}; do
-    echolor "Checking $app ..."
+    #echolor -nnl "Checking $app ... "
     if command -v $app &> /dev/null; then
-        echo "✅ $app is installed "
+        #echo "✅ $app is installed "
+        printf '%-13s: %s\n' "Checking $app" "✅"
     else
-        echo ">>> $app is not installed ❌"
-        echo ">>> Please install the application $app and run the script again."
+        #echo ">>> $app is not installed "
+        printf '%-13s: %s\n' "Checking $app" "❌"
+        echo
+        echo ">>> Please install the application >> $app << and run the script again."
         echo
         exit 1
     fi
@@ -142,20 +210,19 @@ echolor "Checking if Nosflare has already been built here ..."
 if test -d $path_nosflare; then
     echo "✅ $path_nosflare has been found "
     echo
-    echolor "Getting nosflare cloned version..."
+    echolor "Getting nosflare local version..."
     version_cloned=$(grep version $path_worker_js | cut -d '"' -f 2)
-    version_cloned_last_commit=$(git -C $path_nosflare rev-parse HEAD)
-    echo "Local cloned version found        : $version_cloned"
-    echo "Local cloned latest commit found  : $nosflare_remote_gh_repo/commit/$version_cloned_last_commit"
+    echo "Local nosflare version found      : $version_cloned"
     echo
     echolor "Getting nosflare latest version from github..."
-    nosflare_latest_version=$(curl -s "https://raw.githubusercontent.com/$nosflare_gh_repo_owner/nosflare/main/worker.js" | grep version | cut -d '"' -f 2)
     echo "Remote latest version found       : $nosflare_latest_version"
+    #nosflare_remote_latest_commit=$(git ls-remote $nosflare_remote_gh_repo | grep HEAD | cut -f 1)
     nosflare_remote_latest_commit=$(git ls-remote $nosflare_remote_gh_repo | grep HEAD | cut -f 1)
     echo "Remote latest commit              : $nosflare_remote_gh_repo/commit/$nosflare_remote_latest_commit"
     echo
     if [ "$version_cloned" = "$nosflare_latest_version" ]; then
-        echo "You already have the latest version."
+        echo "You already have the latest version ✅"
+        echo
         echolor "Would you like to deploy Nosflare anyway?"
         echo
         echo "Press any key to continue or CTRL+C to quit this script."
@@ -163,38 +230,29 @@ if test -d $path_nosflare; then
         echo "Sure?"
         read
     else
-        echo "New Nosflare release available!"
+        echo "🔥🔥🔥 New Nosflare release available!"
+        echo
         echolor "Would you like to update nosflare and rebuild it with your info?"
-        echo "You'll have a functional worker.js file with your infos but if you made some code changes that WILL DELETE THEM."
+        echo "Local worker.js will be erased ☢️  (it's normal)"
         echo
         echo "Press any key to continue or CTRL+C to quit this script."
         read
         echo "Sure?"
         read
-        echolor "Updating local folder with latest github changes from $nosflare_remote_gh_repo (MAIN branche) ..."
         echolor "Getting latest changes and overwriting local files..."
-        git -C $path_nosflare reset --hard HEAD
-        git -C $path_nosflare pull
+        DownloadWorkerJS
         echo "Done ✅"
     fi
 else
     echo "⚠️   $path_nosflare not found. First time install?"
     echo
-    echolor "Would you like to clone nosflare from $nosflare_remote_gh_repo to $path_nosflare ?"
+    echolor "Would you like to download nosflare workers.js file from $nosflare_remote_gh_repo to $path_worker_js ?"
     echo
     echo "Press any key to continue or CTRL+C to exit."
     read
-    echolor "Cloning Nosflare ..." # from $nosflare_remote_gh_repo to $path_nosflare ... "
-    git clone --quiet $nosflare_remote_gh_repo_git
-    echo "✅ clone succeed "
+    DownloadWorkerJS
     echo
-    echolor "Installing @noble/curves ..."
-    npm install --silent --prefix $path_nosflare @noble/curves
-    echo "✅ @noble/curves installation succeed "
-    echo
-    echolor "Installing wrangler-cli"
-    npm install --silent --prefix $path_nosflare wrangler
-    echo "✅  installation succeed"
+    InstallNPMDependencies
 fi
 echo
 echolor "Verifying if depedencies are locally installed ..."
@@ -202,7 +260,7 @@ echo
 echolor "Checking wrangler ..."
 if $path_wrangler --version &> /dev/null; then # TRY
     wrangler_version=$($path_wrangler --version)
-    echo "✅ Found wrangler v$wrangler_version  "
+    echo "Found wrangler v$wrangler_version ✅"
 else # CATCH
     echo
     echo "❌❌❌ Can't get wrangler version"
@@ -238,7 +296,7 @@ for blockedPubkey in ${blockedPubkeys[@]}; do
     fi 
     ((i++))
 done
-echo "✅ updated succeed"
+echo "Update succeed ✅"
 echo
 export CLOUDFLARE_API_TOKEN
 echolor "Verifying who you are ..."
@@ -251,13 +309,13 @@ fi
 echo
 echolor "Verify if wrangler.toml ($path_wrangler_toml) exists ..."
 if test -f "$path_wrangler_toml"; then
-    echo "✅ wrangler.toml exists "
+    echo "Wrangler.toml exists ✅"
 else
     echo "⚠️   wrangler.toml doesn't exists! (normal, first install)"
     echolor "Dowloading it ($url_file_wrangler_toml)..."
     wget -q "$url_file_wrangler_toml" -O $path_wrangler_toml
     if test -f "$path_wrangler_toml"; then
-        echo "✅ wrangler.toml download succeed"
+        echo "Wrangler.toml downloaded ✅"
     else
         echo ">>> Error during download"
         echo
@@ -270,9 +328,9 @@ kvs_json=$($path_wrangler kv:namespace list)
 kvs_count=$(echo $kvs_json | jq length)
 if [[ $kvs_count -gt 0 ]]
     then
-        echo "✅ Found $kvs_count KV(s)"
+        echo "Found $kvs_count KV(s) ✅"
     else
-        echo "⚠️   Found $kvs_count KV(s)"
+        echo "Found $kvs_count KV(s) ⚠️"
         echo
         echolor "Creating Nosflare KV ... "
         echo
@@ -297,7 +355,7 @@ if [ -z "${nosflare_cf_kv_id}" ]; then
     echo
     exit 1
 else
-    echo "✅ Nosflare KVdb id : $nosflare_cf_kv_id"
+    echo "Nosflare KVdb id : $nosflare_cf_kv_id ✅"
 fi
 #exit
 echo
@@ -306,14 +364,14 @@ sed -i 's/"KV_ID"/"'"$nosflare_cf_kv_id"'"/g' $path_wrangler_toml
 sed -i 's/"FULL_DOMAIN"/"'"$relayURL"'"/g' $path_wrangler_toml
 sed -i 's/"DOMAIN"/"'"$relayDOMAIN"'"/g' $path_wrangler_toml
 sed -i 's/"DATE"/"'"$worker_date"'"/g' $path_wrangler_toml
-echo "✅ Done"
+echo "Done ✅"
 echo
 echolor "Deploying your Nosflare Nostr relay to Cloudflare ..."
 echo
 if $path_wrangler deploy $path_worker_js
 then
     echo
-    echo "✅✅✅ Nosflare deployment succeed! 💥"
+    echo "Nosflare deployment succeed ✅✅✅"
 else
     echo
     echo "⛔ Nosflare deployment failed!"
