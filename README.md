@@ -2,11 +2,7 @@
 
 https://github.com/PastaGringo/nosflare/assets/16828964/fb476a92-6458-4a76-9216-9451039ac886
 
-BETA Simple script to deploy the Nosflare serverless Nostr relay to Cloudflare Worker.  
-Still is still in development and may be integrated to Nosflare repo when going to Production.
-
-The script won't update your Nosflare until you change the source Github repo for Nosflare.  
-Will be useful to test the upgrade for the next Nosflare release.
+Script to deploy the Nosflare serverless Nostr relay to your Cloudflare Worker.
 
 ## How to use
 
@@ -18,7 +14,7 @@ chmod +x ./NosflareDeploy.sh
 
 ### Run the script
 ```
-./DeployNosflare.sh
+./NosflareDeploy.sh
 
 -------------------------- NosflareDeploy v1.0 ---------------------------
     _   __           ______                ____             __           
@@ -32,7 +28,7 @@ chmod +x ./NosflareDeploy.sh
 Current dir: /home/pastadmin/Apps/TEMP
 Hide my infos: disabled
 
-Checking if variables have been set INTO the script (how-to: nano ./DeployNosflare.sh) ...
+Checking if variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ...
 
 ❌ VAR $CLOUDFLARE_API_TOKEN    :
 ❌ VAR $relayURL                :
@@ -45,7 +41,7 @@ Checking if variables have been set INTO the script (how-to: nano ./DeployNosfla
 [ERROR] At least one variable is missing. You need to set all the variables before starting the script. Exiting. Bye
 ```
 
-### Update the script variables for your infos
+### Update the script variables with your infos
 ```
 # Please update variables below before running the script
 ##################################################################################################
@@ -70,18 +66,12 @@ nano ./DeployNosflare.sh
 ```
 
 ### Upgrade your Nosflare relay with the script 
-BUG ⚠️ please see known bug below
 
-Update the variable nosflare_remote_gh_repo to the official Nosflare github repo:
-```
-nosflare_remote_gh_repo="https://github.com/Spl0itable/nosflare"
-```
+WIP
 
 Don't hesitate to open new issues if you find some bugs into the script ⚡
 
 ### Known bug
-
-- 28/03/2024: You can't update your Nosflare relay by switching from this relay to https://github.com/Spl0itable/nosflare. You have to delete your Cloudflare Worker & KV and ./nosflare folder (everything basically) before starting the script with the new Github repo https://github.com/Spl0itable/nosflare. As the script git pull the local cloned repo, it will always clone this repo and not the new one.
   
 - 28/03/2024 [RESOLVED] the compatibility_date located in the wrangler.toml needs to be updated every new deployment with the current date time. See: https://developers.cloudflare.com/workers/configuration/compatibility-dates/
 
