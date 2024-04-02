@@ -229,6 +229,7 @@ if test -d $path_nosflare; then
         read
         echo "Sure?"
         read
+        DownloadWorkerJS
     else
         echo "🔥🔥🔥 New Nosflare release available!"
         echo
