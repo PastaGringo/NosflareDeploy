@@ -1,0 +1,10 @@
+compatibility_date = "DATE"
+name = "nosflare"
+workers_dev = false
+main = "dist/worker.js"
+kv_namespaces = [
+    { binding = "relayDb", id = "KV_ID" }
+]
+routes = [
+	{ pattern = "FULL_DOMAIN", zone_name = "DOMAIN" }
+]
