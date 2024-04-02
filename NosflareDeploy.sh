@@ -2,7 +2,7 @@
 #
 # # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
-#  
+#
 # You can create your API token from your Cloudflare account here: https://dash.cloudflare.com/profile/api-tokens
 # Use template "Edit Cloudflare Workers" or create a custom one for workers
 CLOUDFLARE_API_TOKEN=""
