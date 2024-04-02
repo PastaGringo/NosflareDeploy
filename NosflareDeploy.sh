@@ -280,8 +280,14 @@ sed -i 's/\[1064\]/\["'"$blockedEventKinds"'"\]/g' $path_worker_js
 sed -i '/blockedEventKinds/s/"//g' $path_worker_js
 sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
 blockedEventKinds_raw=$(sed 's/"//g' <<< "$blockedEventKinds")
-sed -i 's/  1064/  "'"$blockedEventKinds_raw"'"/g' $path_worker_js
-sed -i '/  "'"$blockedEventKinds_raw"'"/s/"//g' $path_worker_js
+if [ -z "$blockedEventKinds_raw" ]
+then
+      echo "blockedEventKinds is empty, keeping default value 1064."
+else
+      echo "blockedEventKinds is not empty, updating worker.js file."
+      sed -i 's/  1064/  "'"$blockedEventKinds_raw"'"/g' $path_worker_js
+      sed -i '/  "'"$blockedEventKinds_raw"'"/s/"//g' $path_worker_js
+fi
 sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
 blockedPubkeys_count=$(grep -o ',' <<< "$blockedPubkeys" | wc -l)
 blockedPubkeys_count=$((blockedPubkeys_count + 1))
