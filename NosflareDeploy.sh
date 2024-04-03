@@ -47,7 +47,7 @@ nosflare_gh_repo_owner=$(echo $nosflare_remote_gh_repo | cut -d"/" -f 4)
 nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="worker-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
-version_check="1.8.6"
+version_check="1.8.7"
 ##################################################################################################
 function CheckVersion()
 {
@@ -231,7 +231,7 @@ if test -d $path_nosflare; then
         read
         DownloadWorkerJS
     else
-        echo "🔥🔥🔥 New Nosflare release available!"
+        echo "🔥🔥🔥 New Nosflare $nosflare_latest_version release available!"
         echo
         echolor "Would you like to update nosflare and rebuild it with your info?"
         echo "Local worker.js will be erased ☢️  (it's normal)"
