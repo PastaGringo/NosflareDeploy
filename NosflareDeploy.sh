@@ -1,5 +1,5 @@
 #!/bin/bash
-version_check="1.10.8"
+version_check="1.11.9"
 #
 # # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
