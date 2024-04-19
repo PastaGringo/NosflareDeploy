@@ -1,5 +1,5 @@
 #!/bin/bash
-version_check="1.11.9"
+version_check="1.13.9"
 #
 # # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
@@ -20,6 +20,7 @@ relayInfo_contact="" #example: relayInfo_contact="pastagringo@fractalized.net"
 relayIcon_URL=""
 blockedPubkeys="" # With comma at begin/end. Ex: ""c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18""
 blockedEventKinds="" # With comma at begin/end. Ex: "1064, 4, 22242"
+nip05Users=""
 # OPTIONAL END ##########################################################################################
 #
 # CUSTOM BEGIN ##########################################################################################
@@ -32,7 +33,7 @@ debug=0
 # Script variables, please do not modify if you don't know what you are doing
 apps_to_check=(npm git jq)
 vars_to_check_mandatory=(today worker_date CLOUDFLARE_API_TOKEN relayURL relayDOMAIN relayInfo_name relayInfo_description relayInfo_pubkey relayInfo_contact)
-vars_to_check_optional=(relayIcon_URL blockedPubkeys blockedEventKinds )
+vars_to_check_optional=(relayIcon_URL blockedPubkeys blockedEventKinds nip05Users)
 pwd=$(pwd)
 path_nosflare="$pwd/nosflare"
 path_node_modules_bin="$path_nosflare/node_modules/.bin"
@@ -48,7 +49,15 @@ nosflare_gh_repo_owner=$(echo $nosflare_remote_gh_repo | cut -d"/" -f 4)
 nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="worker-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
+nip05_url="y"
 ##################################################################################################
+function supprimer_valeur() {
+    local key="$1"
+    sed -i '/const nip05Users = {/,/};/ {
+        /'"${key}"'/d
+    }' "$path_worker_js"
+}
+
 function CheckVersion()
 {
     echo
@@ -288,21 +297,72 @@ else
       sed -i 's/  1064/  "'"$blockedEventKinds_raw"'"/g' $path_worker_js
       sed -i '/  "'"$blockedEventKinds_raw"'"/s/"//g' $path_worker_js
 fi
-sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
-blockedPubkeys_count=$(grep -o ',' <<< "$blockedPubkeys" | wc -l)
-blockedPubkeys_count=$((blockedPubkeys_count + 1))
-i=1
-for blockedPubkey in ${blockedPubkeys[@]}; do
-    pubkey0=$(echo ${blockedPubkey:0:-1})
-    pubkey='"'"$pubkey0"'"' 
-    pubkey2=$(echo $pubkey | sed 's/$/,/')
-    if [ "$i" -eq 1 ]; then
-      sed -i '/const blockedPubkeys/a '"$pubkey"'' $path_worker_js
-    else
-      sed -i '/const blockedPubkeys/a '"$pubkey2"'' $path_worker_js
-    fi 
-    ((i++))
+### Blocked pubkeys ###
+supprimer_blocked_pubkeys() {
+    sed -i '/const blockedPubkeys = \[/,/];/ {
+        /const blockedPubkeys = \[/n; /];/n; d
+    }' "$path_worker_js"
+}
+# Fonction pour supprimer une valeur du bloc blockedPubkeys
+supprimer_valeur_blocked_pubkeys() {
+    local valeur_a_supprimer="$1"
+    sed -i "\#const blockedPubkeys = \[#,\#];# s#\"$valeur_a_supprimer\",##" "$path_worker_js"
+}
+supprimer_blocked_pubkeys
+# Nouvelles valeurs à ajouter, séparées par un espace
+# Nouvelles valeurs à ajouter, séparées par un espace
+# Fonction pour formater les nouvelles valeurs avec des guillemets
+formater_nouvelles_valeurs() {
+    local valeurs_a_formater="$1"
+    local valeurs_formatees=""
+    for valeur in $valeurs_a_formater; do
+        valeurs_formatees+="\"$valeur\",\n"
+    done
+    valeurs_formatees="${valeurs_formatees%,*}"
+    echo "$valeurs_formatees"
+}
+# Fonction pour ajouter plusieurs nouvelles valeurs au bloc blockedPubkeys
+ajouter_nouvelles_valeurs_blocked_pubkeys() {
+    local valeurs_a_ajouter="$1"
+    
+    # Construction de l'expression à ajouter
+    expression="$(formater_nouvelles_valeurs "$valeurs_a_ajouter")"
+
+    # Utilisation de sed pour ajouter les nouvelles valeurs au bloc blockedPubkeys
+    sed -i "/const blockedPubkeys = \[/a $expression" "$path_worker_js"
+}
+# Exemple d'utilisation pour ajouter plusieurs nouvelles valeurs
+ajouter_nouvelles_valeurs_blocked_pubkeys "$blockedPubkeys"
+###
+# sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
+# blockedPubkeys_count=$(grep -o ',' <<< "$blockedPubkeys" | wc -l)
+# blockedPubkeys_count=$((blockedPubkeys_count + 1))
+# i=1
+# for blockedPubkey in ${blockedPubkeys[@]}; do
+#     pubkey0=$(echo ${blockedPubkey:0:-1})
+#     pubkey='"'"$pubkey0"'"' 
+#     pubkey2=$(echo $pubkey | sed 's/$/,/')
+#     if [ "$i" -eq 1 ]; then
+#       sed -i '/const blockedPubkeys/a '"$pubkey"'' $path_worker_js
+#     else
+#       sed -i '/const blockedPubkeys/a '"$pubkey2"'' $path_worker_js
+#     fi 
+#     ((i++))
+# done
+### Update NIP05 users
+supprimer_valeur "lucas"
+#nip05Users=""
+for nv in "${nip05Users[@]}"; do
+    nouvelles_valeurs_string+="\"${nv%:*}\": \"${nv#*:}\",\n"
 done
+nouvelles_valeurs_string="${nouvelles_valeurs_string%??}"
+ajouter_nouvelles_valeurs() {
+    sed -i "/const nip05Users = {/,/};/ {
+        /};/ i $nouvelles_valeurs_string
+    }" "$path_worker_js"
+}
+ajouter_nouvelles_valeurs
+### Update done ####
 echo "Update succeed ✅"
 echo
 export CLOUDFLARE_API_TOKEN
@@ -368,8 +428,9 @@ fi
 echo
 echolor "Updating wrangler.toml file with given ENV variables... "
 sed -i 's/"KV_ID"/"'"$nosflare_cf_kv_id"'"/g' $path_wrangler_toml
-sed -i 's/"FULL_DOMAIN"/"'"$relayURL"'"/g' $path_wrangler_toml
-sed -i 's/"DOMAIN"/"'"$relayDOMAIN"'"/g' $path_wrangler_toml
+#sed -i 's/"FULL_DOMAIN"/"'"$relayURL"'"/g' $path_wrangler_toml
+sed -i 's/"FULL_DOMAIN/"'"$relayURL"'/g' $path_wrangler_toml
+sed -i 's/"DOMAIN/"'"$relayDOMAIN"'/g' $path_wrangler_toml
 sed -i 's/"DATE"/"'"$worker_date"'"/g' $path_wrangler_toml
 echo "Done ✅"
 echo
