@@ -55,7 +55,6 @@ nosflare_gh_repo_owner=$(echo $nosflare_remote_gh_repo | cut -d"/" -f 4)
 nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="nosflare-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
-nip05_url="y"
 ##################################################################################################
 function supprimer_valeur() {
     local key="$1"
@@ -192,6 +191,8 @@ echolor "Checking if MANDATORY variables have been set INTO the script (how-to: 
 if test -f "prod_vars"; then
     echo "### Loading Production variables ###"
     . prod_vars
+    first_nip05=$(echo "${nip05Users[0]}" | awk -F ':' '{print $1}')
+    #echo "first_nip05: $first_nip05"
 fi
 var_missing=0
 for var in "${vars_to_check_mandatory[@]}"; do
@@ -466,6 +467,8 @@ echo
 echo "  Your Nosflare Nostr relay is available here   : https://$relayURL"
 echo "  Your Nosflare Nostr websocket                 : wss://$relayURL"
 echo "  Your can check your relay state here          : https://nostr.watch/relay/$relayURL"
+echo "  You can check the relay favicon here          : https://$relayURL/favicon.ico"
+echo "  You can chech the relay NIP05 here            : https://$relayURL/.well-known/nostr.json?name=$first_nip05"
 echo
 echolor "########################################################################################################"
 echo
