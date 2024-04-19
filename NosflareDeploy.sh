@@ -21,6 +21,12 @@ relayIcon_URL=""
 blockedPubkeys="" # With comma at begin/end. Ex: ""c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18""
 blockedEventKinds="" # With comma at begin/end. Ex: "1064, 4, 22242"
 nip05Users=""
+# nip05Users example:
+#nip05Users=(
+#    "pastagringo:b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79"
+#    "welcome:e7c3a4c24f04dfcd4622edd08b881e04d8657310e1e289eb181c100efe8d547a"
+#)
+####
 # OPTIONAL END ##########################################################################################
 #
 # CUSTOM BEGIN ##########################################################################################
