@@ -6,8 +6,5 @@ kv_namespaces = [
     { binding = "relayDb", id = "KV_ID" }
 ]
 routes = [
-	{ pattern = "FULL_DOMAIN", zone_name = "DOMAIN" },
-    { pattern = "FULL_DOMAIN/.well-known/nostr.json*", zone_name = "DOMAIN" },
-    { pattern = "DOMAIN/.well-known/nostr.json*", zone_name = "DOMAIN" },
-    { pattern = "FULL_DOMAIN/favicon.ico", zone_name = "DOMAIN" }
+    { pattern = "FULL_DOMAIN", custom_domain = true }
 ]
