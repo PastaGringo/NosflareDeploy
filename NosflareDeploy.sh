@@ -1,5 +1,5 @@
 #!/bin/bash
-version_check="1.13.9"
+version_check="1.15.9"
 #
 # # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
@@ -20,26 +20,44 @@ relayInfo_contact="" #example: relayInfo_contact="pastagringo@fractalized.net"
 relayIcon_URL=""
 blockedPubkeys="" # With comma at begin/end. Ex: ""c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f", "fed5c0c3c8fe8f51629a0b39951acdf040fd40f53a327ae79ee69991176ba058", "e810fafa1e89cdf80cced8e013938e87e21b699b24c8570537be92aec4b12c18""
 blockedEventKinds="" # With comma at begin/end. Ex: "1064, 4, 22242"
-nip05Users=""
+nip05Users=()
 # nip05Users example:
 #nip05Users=(
 #    "pastagringo:b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79"
 #    "welcome:e7c3a4c24f04dfcd4622edd08b881e04d8657310e1e289eb181c100efe8d547a"
 #)
+blockedContent=()
+# blockedContent example:
+#blockedContent=(
+#    "FIAT"
+#    "I love my bank"
+#)
+blastRelays=()
+# blastRelays example:
+# blastRelays=(
+#     "wss://nostr1.fractalized.net"
+#     "wss://nostr2.fractalized.net"
+#     "wss://nostr3.fractalized.net"
+#     "wss://nostr4.fractalized.net"
+# )
+excludedRateLimitKinds=""
+# excludedRateLimitKinds example:
+# excludedRateLimitKinds="1, 2, 3"
 ####
 # OPTIONAL END ##########################################################################################
 #
-# CUSTOM BEGIN ##########################################################################################
+# Script options BEGIN ##########################################################################################
 # Set to 1 if you need to hide your info during the wrangler whoami & CF API KEY display (maybe you want to record your session script?)
 hide_whoami_infos=1
 debug=0
+# Script options END ##########################################################################################
 # CUSTOM BEGIN ##########################################################################################
 #
 # ##################################################################################################
 # Script variables, please do not modify if you don't know what you are doing
 apps_to_check=(npm git jq)
 vars_to_check_mandatory=(today worker_date CLOUDFLARE_API_TOKEN relayURL relayDOMAIN relayInfo_name relayInfo_description relayInfo_pubkey relayInfo_contact)
-vars_to_check_optional=(relayIcon_URL blockedPubkeys blockedEventKinds nip05Users)
+vars_to_check_optional=(relayIcon_URL blockedPubkeys blockedEventKinds nip05Users blockedContent blastRelays excludedRateLimitKinds)
 pwd=$(pwd)
 path_nosflare="$pwd/nosflare"
 path_node_modules_bin="$path_nosflare/node_modules/.bin"
@@ -56,6 +74,15 @@ nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="nosflare-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
 ##################################################################################################
+function add_entry_blockedContent {
+  local entry="$1"
+  # Using awk to add the entry after the specific marker
+  awk -v entry="$entry" '
+  {print}
+  /\/\/ ... more blocked content/{print "  " entry} # Print new entry right after the marker line
+  ' "$path_worker_js" > temp_file && mv temp_file "$path_worker_js" # Output to temp file and replace original
+}
+
 function supprimer_valeur() {
     local key="$1"
     sed -i '/const nip05Users = {/,/};/ {
@@ -67,11 +94,13 @@ function CheckVersion()
 {
     echo
     nosflare_latest_version=$(curl -s "https://raw.githubusercontent.com/$nosflare_gh_repo_owner/nosflare/main/worker.js" | grep version | cut -d '"' -f 2)
-    echo "Latest Nosflare ($nosflare_remote_gh_repo) version available: $nosflare_latest_version"
+    echo "Latest Nosflare ($nosflare_remote_gh_repo) version available: v$nosflare_latest_version"
+    echo "Changelog: https://github.com/Spl0itable/nosflare/blob/main/changelog.md"
     if [ "$nosflare_latest_version" != "$version_check" ]; then
         echo
-        echo "NosflareDeploy is not yet compatible with version $nosflare_latest_version (currently: $version_check)"
-        echo "Please open an Github issue to ask an update: https://github.com/PastaGringo/NosflareDeploy/issues/new"
+        echo "NosflareDeploy is not yet compatible with v$nosflare_latest_version ☹️  (currently: $version_check)"
+        echo "Please open an Github issue to ask an update to v$nosflare_latest_version."
+        echo "One-click issue opening: https://github.com/PastaGringo/NosflareDeploy/issues/new?title=Please%20update%20NosflareDeploy%20to%20v$nosflare_latest_version" 
         echo
         exit
     else
@@ -152,14 +181,14 @@ clear
 today=$(date +%Y-%m-%d)
 worker_date=$(date --date="$today -1 day" +%Y-%m-%d) # CF bug when deploying outside US time
 echo 
-echo "-------------------------- NosflareDeploy v1.0 ---------------------------"
+echo "-------------------------- NosflareDeploy v1.∞ ---------------------------"
 echo "    _   __           ______                ____             __           ";
 echo "   / | / /___  _____/ __/ /___  ____ ___  / __ \___  ____  / /___  __  __";
 echo "  /  |/ / __ \/ ___/ /_/ / __ \/ __// _ \/ / / / _ \/ __ \/ / __ \/ / / /";
 echo " / /|  / /_/ (__  ) __/ / /_/ / /  /  __/ /_/ /  __/ /_/ / / /_/ / /_/ / ";
 echo "/_/ |_/\____/____/_/ /_/\__,_/_/   \___/_____/\___/ .___/_/\____/\__, /  ";
 echo "                                                 /_/            /____/.sh";
-echo "-------------------------- NosflareDeploy v1.0 ---------------------------"
+echo "-------------------------- NosflareDeploy v1.∞ ---------------------------"
 echo "                                                                $today    "
 CheckVersion
 echo
@@ -214,6 +243,7 @@ if [ $var_missing -eq 1 ];then
 fi
 echo
 echolor "Checking if OPTIONNAL variables have been set INTO the script (how-to: nano ./NosflareDeploy.sh) ..."
+echo "PS: All the elements from the var won't be displayed (searching how) but they will be used"
 for var in "${vars_to_check_optional[@]}"; do
     if [[ -z "${!var}" ]]; then
         printf '⚠️  %-25s: %s\n' "$var " "${!var}"
@@ -221,6 +251,7 @@ for var in "${vars_to_check_optional[@]}"; do
         printf '✅ %-25s: %s\n' "$var " "${!var}"
     fi
 done
+
 echo
 echolor "Checking if Nosflare has already been built here ..."
 if test -d $path_nosflare; then
@@ -316,9 +347,6 @@ supprimer_valeur_blocked_pubkeys() {
     sed -i "\#const blockedPubkeys = \[#,\#];# s#\"$valeur_a_supprimer\",##" "$path_worker_js"
 }
 supprimer_blocked_pubkeys
-# Nouvelles valeurs à ajouter, séparées par un espace
-# Nouvelles valeurs à ajouter, séparées par un espace
-# Fonction pour formater les nouvelles valeurs avec des guillemets
 formater_nouvelles_valeurs() {
     local valeurs_a_formater="$1"
     local valeurs_formatees=""
@@ -340,22 +368,6 @@ ajouter_nouvelles_valeurs_blocked_pubkeys() {
 }
 # Exemple d'utilisation pour ajouter plusieurs nouvelles valeurs
 ajouter_nouvelles_valeurs_blocked_pubkeys "$blockedPubkeys"
-###
-# sed -i '/3c7f5948b5d80900046a67d8e3bf4971d6cba013abece1dd542eca223cf3dd3f/,+2d' $path_worker_js
-# blockedPubkeys_count=$(grep -o ',' <<< "$blockedPubkeys" | wc -l)
-# blockedPubkeys_count=$((blockedPubkeys_count + 1))
-# i=1
-# for blockedPubkey in ${blockedPubkeys[@]}; do
-#     pubkey0=$(echo ${blockedPubkey:0:-1})
-#     pubkey='"'"$pubkey0"'"' 
-#     pubkey2=$(echo $pubkey | sed 's/$/,/')
-#     if [ "$i" -eq 1 ]; then
-#       sed -i '/const blockedPubkeys/a '"$pubkey"'' $path_worker_js
-#     else
-#       sed -i '/const blockedPubkeys/a '"$pubkey2"'' $path_worker_js
-#     fi 
-#     ((i++))
-# done
 ### Update NIP05 users
 supprimer_valeur "lucas"
 #nip05Users=""
@@ -370,7 +382,40 @@ ajouter_nouvelles_valeurs() {
 }
 ajouter_nouvelles_valeurs
 ### Update done ####
-echo "Update succeed ✅"
+### BEGIN Updating blockedContent ###
+sed -i '/"nigger",/d' "$path_worker_js"
+sed -i '/"~~ hello world! ~~",/d' "$path_worker_js"
+if [ -z "$blockedContent" ]
+then
+    echo "blockedContent is empty, doing nothing."
+else
+    echo "blockedContent is not empty, adding specified blockedContents."
+    for item in "${blockedContent[@]}"; do
+        #add_entry '"new content",'
+        content="\"$item\","
+        add_entry_blockedContent "$content"
+    done
+fi
+### END Updating blockedContent ###
+### BEGIN Updating blastRelays ###
+sed -i '/const blastRelays = \[/,/];/ { /const blastRelays = \[/b; /];/b; d; }' "$path_worker_js"
+i=1
+for item in "${blastRelays[@]}"; do
+    if [ "$i" -eq 1 ]; then
+        content="\"$item\""
+        sed -i '/const blastRelays = \[/a\  '"$content"'' "$path_worker_js"
+    else
+        content="\"$item\","
+        sed -i '/const blastRelays = \[/a\  '"$content"'' "$path_worker_js"
+    fi
+    ((i++))
+    echo    
+done
+### END Updating blastRelays ###
+### BEGIN Updating excludedRateLimitKinds ###
+sed -i "s/const excludedRateLimitKinds = \[\];/const excludedRateLimitKinds = [$excludedRateLimitKinds];/" "$path_worker_js"
+### END Updating excludedRateLimitKinds ###
+echo "worker.js update succeed ✅"
 echo
 export CLOUDFLARE_API_TOKEN
 echolor "Verifying who you are ..."
@@ -410,8 +455,8 @@ if [[ $kvs_count -gt 0 ]]
         echo
         $path_wrangler kv:namespace create kvdb
         echo
-        echo "Waiting 5sec before retrieving CF KV-ID..."
-        sleep 5
+        echo "Waiting 3 sec before retrieving CF KV-ID..."
+        sleep 3
 fi
 echo
 echolor "Looking for the KV-ID for KV with title $nosflare_kv_title ..."
