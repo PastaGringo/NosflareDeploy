@@ -72,6 +72,7 @@ url_file_worker_js="https://raw.githubusercontent.com/Spl0itable/nosflare/main/w
 nosflare_gh_repo_owner=$(echo $nosflare_remote_gh_repo | cut -d"/" -f 4)
 nosflare_remote_gh_repo_git="$nosflare_remote_gh_repo.git"
 nosflare_kv_title="nosflare-kvdb"
+#nosflare_kv_title="worker-kvdb"
 relayDOMAIN=$(echo $relayURL | cut -d"." -f 2,3)
 ##################################################################################################
 function add_entry_blockedContent {
@@ -119,6 +120,7 @@ function InstallNPMDependencies()
 }
 function DownloadWorkerJS()
 {
+    echolor "Checking if $path_worker_js exists ..."
     if test -f "$path_worker_js"; then
         echo "✅ worker.js exists"
         echolor "Removing it..."
@@ -127,8 +129,8 @@ function DownloadWorkerJS()
     #else
     #    echo "⚠️   worker.js doesn't exists!"
     fi
-    echolor "Downloading worker.js ..."
     wget -q  --directory-prefix=$path_nosflare "$url_file_worker_js"
+    echolor "Downloading worker.js ..."
     if test -f "$path_worker_js"; then
         echo "worker.js downloaded ✅"
     else
@@ -473,13 +475,43 @@ if [[ $debug -eq 1 ]]; then
     exit 1
 fi
 if [ -z "${nosflare_cf_kv_id}" ]; then
-    echo '❌ Cannot get the KV namespace ID'
-    echo "Please, run the script one more time in case of Cloudflare timeout (good excuse, chief)."
-    echo "If still not working, open a github issue!"
+    echo "❌ Cannot get the KV namespace ID with title $nosflare_kv_title"
     echo
-    exit 1
+    echo "Changing nosflare_kv_title value from $nosflare_kv_title to 'worker-kvdb'"
+    #echo "Changing nosflare_kv_title value from $nosflare_kv_title to 'nosflare-kvdb'"
+    ################################
+    nosflare_kv_title="worker-kvdb"
+    #nosflare_kv_title="nosflare-kvdb"
+    ################################
+    # Checking second time
+    echolor "Looking for the KV-ID for KV with title '$nosflare_kv_title' ..."
+    kvs_json=$($path_wrangler kv:namespace list)
+    nosflare_cf_kv_id=$(echo $kvs_json | jq -r '.[] | select(.title | startswith("'"$nosflare_kv_title"'"))' | jq -r .id)
+    nosflare_cf_kv_title=$(echo $kvs_json | jq -r '.[] | select(.title | startswith("'"$nosflare_kv_title"'"))' | jq -r .title)
+    if [[ $debug -eq 1 ]]; then
+        echo "[DEBUG] Listing KV namespace:"
+        echo "JSON:"
+        echo $kvs_json | jq
+        $path_wrangler kv:namespace list
+        echo "[DEBUG] $nosflare_cf_kv_title -> $nosflare_cf_kv_id"
+        echo "[DEBUG] End, Bye."
+        exit 1
+    fi
+    if [ -z "${nosflare_cf_kv_id}" ]; then
+        echo "❌ Cannot get the KV namespace ID with this title"
+        echo
+        echo "Changing nosflare_kv_title value from $nosflare_kv_title to 'worker-kvdb'"
+        echo "Please, run the script one more time in case of Cloudflare timeout (good excuse, chief)."
+        echo "If still not working, open a github issue and join this:"
+        echo
+        echo $kvs_json | jq
+        echo
+        exit 1
+    else
+        echo "Nosflare KVdb id: $nosflare_cf_kv_id ✅"
+    fi
 else
-    echo "Nosflare KVdb id : $nosflare_cf_kv_id ✅"
+    echo "Nosflare KVdb id: $nosflare_cf_kv_id ✅"
 fi
 #exit
 echo
