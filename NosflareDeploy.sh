@@ -1,5 +1,5 @@
 #!/bin/bash
-version_check="2.15.10"
+version_check="2.17.13"
 #
 # # MANDATORY BEGIN ###########################################################################################
 # Please update variables below before running the script
